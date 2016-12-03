@@ -1,0 +1,103 @@
+Course Project 1
+======================================================
+### Installing the different packages that may be required in the course project
+```{r}
+install.packages("ggplot2")
+install.packages("plyr")
+install.packages("dplyr")
+
+library(ggplot2)
+library(plyr)
+library(dplyr)
+```
+### Loading the dataset
+
+```{r echo=TRUE}
+counts <- read.csv("C:/Users/amank/Downloads/reproducible_week2/activity.csv", na.strings = "")
+summary(counts)
+str(counts)
+```
+
+##Total number of steps per day
+```{r echo=TRUE}
+counts$day <- as.Date(counts$date)
+counts$DateTime <- as.POSIXct(counts$date,format = "%Y-%m-%d")
+clean <- counts[!is.na(counts$steps),]
+clean
+```
+## Converting the steps into numeric
+
+```{r echo=TRUE}
+counts$steps <- as.numeric(as.character(counts$steps))
+total <- aggregate(counts$steps ~ counts$date, FUN = sum,)
+colnames(total) <- c("Date","Steps")
+```
+## Plotting the graph
+
+```{r echo=TRUE}
+hist(total$Steps, breaks=5, xlab="Steps", main = "Total Steps per Day")
+```
+
+##Mean and median of the total number of steps
+
+```{r echo=TRUE}
+
+as.integer(mean(total$Steps))
+as.integer(median(total$Steps))
+```
+
+## Average Daily Pattern Activity
+```{r echo=TRUE}
+clean <- counts[!is.na(counts$steps),]
+average_pattern <- ddply(clean, .(interval), summarize, Avg = mean(steps))
+a <- ggplot(data = average_pattern, aes(x=interval, y=Avg), xlab = "Interval", ylab="Average Count of Steps") +
+geom_line()+xlab("Interval")+ylab("Average Number of Steps")+ggtitle("Average Number of Steps per Interval")
+
+maximum <- max(average_pattern$Avg)
+average_pattern[average_pattern$Avg==maximum,1]
+```
+
+##Inputing missing values
+```{r echo=TRUE}
+nrow(counts[is.na(counts$steps),])
+
+counts2<- counts
+nas<- is.na(counts2$steps)
+average_difference <- tapply(counts2$steps, counts2$interval, mean, na.rm=TRUE, simplify = TRUE)
+counts2$steps[nas] <- average_difference[as.character(counts2$interval[nas])]
+names(counts2)
+
+counts2 <- counts2[,c("date","interval","steps")]
+
+#####creating the histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+
+total_steps<- counts2%>%
+  group_by(date)%>%
+  summarise(number_steps = sum(steps, na.rm= TRUE))
+total_steps
+
+ggplot(total_steps, aes(x = number_steps)) +
+        geom_histogram(fill = "black", binwidth = 600) +
+        labs(title = "Daily Number of Steps including Missing values", x = "Interval", y = "Number of Steps")
+##### Calculating the mean and median after imputing the missing values
+as.integer(mean(total_steps$number_steps))
+as.integer(median(total_steps$number_steps))
+```
+
+##Are there differences in activity patterns between weekdays and weekends?
+```{r echo=TRUE}
+counts2<- counts2%>%
+        mutate(weektype= ifelse(weekdays(counts2$date)=="Saturday" | weekdays(counts2$date)=="Sunday", "Weekend", "Weekday"))
+
+
+total_steps_2<- counts2%>%
+        group_by(interval, weektype)%>%
+        summarise(number_steps_2 = mean(steps, na.rm=TRUE))
+total_steps_2
+
+b <- ggplot(total_steps_2, aes(x =interval , y=number_steps_2, color=weektype)) +
+       geom_line() +
+       labs(title = "Average of daily Steps by Weektype", x = "Interval", y = "Number of Steps") +
+       facet_wrap(~weektype, ncol = 1, nrow=2)
+print(b)
+```
